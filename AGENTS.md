@@ -146,6 +146,9 @@ hooks/
 
 ## Key Design Decisions & Traps
 
+### Subagent host package discovery (`lib/subagent-package-root.ts`)
+- pi-subagents discovers the host `@earendil-works/pi-coding-agent` by walking up from `argv[1]` (finds `@agegr/pi-web`, name mismatch) or `import.meta.resolve` (fails in the extension sandbox). `registerNodeInstrumentation()` therefore seeds `PI_SUBAGENTS_PI_CODING_AGENT_PACKAGE_ROOT` from our own dependency tree; an explicit operator setting always wins.
+
 ### AgentSession lifecycle (`lib/rpc-manager.ts`)
 - One `AgentSessionWrapper` per session id, keyed in `globalThis.__piSessions`
 - `globalThis` survives Next.js hot-reload; plain module-level Map does not
@@ -288,6 +291,22 @@ Location: `~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
 --accent --user-bg --tool-bg
 --font-mono
 ```
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repo's GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles map to label strings of the same name (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 
 
