@@ -204,8 +204,7 @@ function withExtensionTools(session: AgentSessionLike, toolNames: string[]): str
   const codingToolNames = new Set(CODING_TOOL_NAMES);
   const selectedToolNames = resolveShellTools(toolNames, session.settingsManager.getDefaultTools());
   const extensionToolNames = session
-    .getAllTools()
-    .map((t) => t.name)
+    .getActiveToolNames()
     .filter((name) => !codingToolNames.has(name));
 
   return [...new Set([...selectedToolNames, ...extensionToolNames])];
@@ -618,9 +617,8 @@ export class AgentSessionWrapper {
               source: "rpc",
               // Match pi's RPC contract: acknowledge only after synchronous prompt
               // validation and extension preflight have accepted the submission.
-              preflightResult: (success) => {
-                if (success) acceptPreflight();
-              },
+              // Every SDK disposition accepts the input; rejections reject prompt().
+              preflightResult: acceptPreflight,
             });
           } catch (error) {
             finishPrompt();
@@ -1844,11 +1842,7 @@ function runtimeMessageActivityMs(entry: SessionMessageEntry): number | undefine
   return Number.isNaN(timestamp) ? undefined : timestamp;
 }
 
-/**
- * Return live sessions that should be visible in the session list. Pi delays
- * the first JSONL flush until an assistant message exists, so an accepted new
- * prompt must temporarily be described from its in-memory SessionManager.
- */
+/** Return live sessions, including accepted prompts not yet present in the file scan. */
 export function getRpcSessionInfos(options: { includeTransient?: boolean } = {}): SessionInfo[] {
   const sessions: SessionInfo[] = [];
   for (const session of getRegistry().values()) {
@@ -2124,9 +2118,8 @@ export async function startRpcSession(
     );
     if (persistedPreferences.modelDefaultChanged) invalidateModelsCache();
 
-    // If specific tool names were requested (non-empty), set the active tools to the
-    // requested builtin coding tools PLUS all extension/package tools, so installed
-    // extensions stay usable in Pi Web just like in the `pi` CLI.
+    // Keep the requested coding tools and the extensions already activated by
+    // the SDK. Inactive or non-direct tools must not be enabled by a preset.
     if (!subagentResources && !chatOnly) {
       inner.setActiveToolsByName(withExtensionTools(inner, selectedToolNames ?? inner.getActiveToolNames()));
     }

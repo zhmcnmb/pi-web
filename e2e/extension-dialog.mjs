@@ -10,6 +10,8 @@ export const extensionSource = `export default function (pi) {
         result = await ctx.ui.input("E2E after timeout");
       } else if (mode === "select") {
         result = await ctx.ui.select("E2E select", Array.from({ length: 30 }, (_, i) => "Option " + (i + 1)));
+      } else if (mode === "preview") {
+        result = await ctx.ui.select("E2E preview question?\\n\\n--- 1. First preview ---\\n" + "Preview details. ".repeat(90), ["1. First", "2. Second"]);
       } else {
         result = await ctx.ui[mode]("E2E " + mode, "Details");
       }
@@ -32,7 +34,7 @@ export async function checkExtensionDialogs(page, artifacts, width) {
     const input = page.locator("textarea").last();
     await input.fill(`/e2e-dialog ${mode}`);
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: `E2E ${mode}`, exact: true });
+    const dialog = page.getByRole("dialog", { name: mode === "preview" ? /E2E preview question\?/ : `E2E ${mode}`, exact: mode !== "preview" });
     await dialog.waitFor();
     return dialog;
   };
@@ -42,6 +44,18 @@ export async function checkExtensionDialogs(page, artifacts, width) {
   };
 
   try {
+    const preview = await start("preview");
+    const details = preview.locator("details");
+    assert.equal(await details.evaluate(element => element.open), false);
+    const secondOption = preview.locator("[data-extension-option]").nth(1);
+    assert.equal(await secondOption.isVisible(), true);
+    assert.match(await secondOption.innerText(), /Second/);
+    await details.locator("summary").click();
+    assert.equal(await details.evaluate(element => element.open), true);
+    assert.ok((await details.innerText()).includes("Preview details."));
+    await secondOption.click();
+    await finish("preview", "2. Second");
+
     const select = await start("select");
     await page.waitForFunction(() => document.activeElement?.textContent === "Option 1");
     for (const [key, expected] of [["ArrowUp", "Option 30"], ["ArrowDown", "Option 1"], ["ArrowRight", "Option 2"], ["ArrowLeft", "Option 1"], ["End", "Option 30"], ["Home", "Option 1"], ["End", "Option 30"]]) {

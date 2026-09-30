@@ -1,6 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, SettingsManager } from "@earendil-works/pi-coding-agent";
 import lockfile from "proper-lockfile";
 
 const DEFAULT_TOOLS = ["read", "bash", "edit", "write"];
@@ -69,7 +69,8 @@ export async function readPowerShellToolEnabled(
   if (!existsSync(settingsPath)) return false;
   const release = await lockfile.lock(settingsPath, { realpath: false, retries: 10 });
   try {
-    return isPowerShellToolEnabled(configuredTools(parseSettings(settingsPath)), platform);
+    const defaultTools = configuredTools(parseSettings(settingsPath));
+    return isPowerShellToolEnabled(SettingsManager.inMemory({ defaultTools }).getDefaultTools(), platform);
   } finally {
     await release();
   }
@@ -92,8 +93,13 @@ export async function writePowerShellToolEnabled(
   try {
     const settings = parseSettings(settingsPath);
     const currentTools = configuredTools(settings) ?? DEFAULT_TOOLS;
-    const nextTools = replaceShellTool(currentTools, enabled);
-    if (!currentTools.some((name) => SHELL_TOOLS.has(name))) {
+    const hasModifiers = currentTools.some((name) => /^[+-]/.test(name));
+    const baseTools = currentTools.filter((name) => !(/^[+-]/.test(name) && SHELL_TOOLS.has(name.slice(1))));
+    const nextTools = replaceShellTool(baseTools, enabled);
+    if (hasModifiers) {
+      // Keep a plain base plain, and a modifier-only list relative to SDK defaults.
+      nextTools.push(enabled ? "-bash" : "-powershell", enabled ? "+powershell" : "+bash");
+    } else if (!currentTools.some((name) => SHELL_TOOLS.has(name))) {
       nextTools.push(enabled ? "powershell" : "bash");
     }
     settings.defaultTools = nextTools;

@@ -558,8 +558,13 @@ export function withSubagentExtensionTools(
 }
 
 export function selectSubagentExtensionTools(
-  extensions: Iterable<{ path: string; sourceInfo?: { source?: string }; tools: Map<string, unknown> }>,
+  extensions: Iterable<{
+    path: string;
+    sourceInfo?: { source?: string };
+    tools: Map<string, { definition?: { exposure?: string; defaultActive?: boolean } }>;
+  }>,
   selectors: readonly string[],
+  defaultTools: readonly string[] = [],
 ): string[] {
   const wanted = selectors.map((selector) => selector.slice(4).toLowerCase());
   return [...extensions].flatMap((extension) => {
@@ -569,14 +574,24 @@ export function selectSubagentExtensionTools(
     const selected = wanted.some((selector) => {
       if (selector === "*") return true;
       const [extensionName, toolName] = selector.split("/", 2);
-      return extensionNames.has(extensionName) && (!toolName || extension.tools.has(toolName));
+      return extensionNames.has(extensionName) && (!toolName || toolName === "*" || extension.tools.has(toolName));
     });
     if (!selected) return [];
-    return [...extension.tools.keys()].filter((toolName) => wanted.some((selector) => {
-      if (selector === "*" || selector.endsWith("/*")) return selector === "*" || extensionNames.has(selector.slice(0, -2));
-      const [extensionName, selectedTool] = selector.split("/", 2);
-      return extensionNames.has(extensionName) && (!selectedTool || selectedTool === toolName);
-    }));
+    return [...extension.tools.keys()].filter((toolName) => {
+      const definition = extension.tools.get(toolName)?.definition;
+      const exposure = definition?.exposure ?? "direct";
+      if (exposure === "hidden") return false;
+      const selected = wanted.some((selector) => {
+        if (selector === "*" || selector.endsWith("/*")) return selector === "*" || extensionNames.has(selector.slice(0, -2));
+        const [extensionName, selectedTool] = selector.split("/", 2);
+        return extensionNames.has(extensionName) && (!selectedTool || selectedTool === toolName);
+      });
+      const explicit = defaultTools.includes(toolName) || wanted.some((selector) => {
+        const [extensionName, selectedTool] = selector.split("/", 2);
+        return extensionNames.has(extensionName) && selectedTool === toolName;
+      });
+      return selected && (explicit || ((exposure === "direct" || exposure === "model-only") && definition?.defaultActive !== false));
+    });
   });
 }
 

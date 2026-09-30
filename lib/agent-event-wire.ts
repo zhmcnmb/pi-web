@@ -101,6 +101,7 @@ export function toClientAgentEvent(
       type: "tool_execution_update",
       toolCallId: event.toolCallId,
       toolName: event.toolName,
+      ...(event.parentToolCallId !== undefined ? { parentToolCallId: event.parentToolCallId } : {}),
       partialResult: event.partialResult,
     };
   }

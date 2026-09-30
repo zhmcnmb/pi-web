@@ -328,6 +328,7 @@ export const enLocale: LocalePlugin = {
     "chat.extensionPending": "Awaiting response",
     "chat.extensionCollapse": "Collapse",
     "chat.extensionExpand": "Expand",
+    "chat.extensionDetails": "Show details",
     "chat.cancel": "Cancel",
     "chat.confirm": "Confirm",
     "chat.submit": "Submit",

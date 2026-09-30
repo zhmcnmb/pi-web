@@ -1,4 +1,5 @@
 import type { AuthEvent, AuthPrompt } from "@earendil-works/pi-ai";
+import { getAgentDir, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { randomUUID } from "node:crypto";
 import { invalidateModelsCache } from "@/lib/models-cache";
 import { createModelRuntimeWithExtensions } from "@/lib/model-runtime";
@@ -119,6 +120,7 @@ export async function GET(
       // Also cancel on client disconnect
       abort.signal.addEventListener("abort", cleanup);
 
+      let loginSettings: SettingsManager | undefined;
       try {
         await modelRuntime.login(provider, "oauth", {
           prompt: async (prompt: AuthPrompt) => {
@@ -164,7 +166,19 @@ export async function GET(
             }
           },
           signal: abort.signal,
+        }, {
+          getDeviceId: () => {
+            loginSettings ??= SettingsManager.create(getAgentDir(), getAgentDir());
+            const error = loginSettings.drainErrors().find((entry) => entry.scope === "global");
+            if (error) throw error.error;
+            return loginSettings.getOrCreateDeviceId();
+          },
         });
+        if (loginSettings) {
+          await loginSettings.flush();
+          const error = loginSettings.drainErrors()[0];
+          if (error) throw error.error;
+        }
 
         invalidateModelsCache();
         send(controller, { type: "success" });

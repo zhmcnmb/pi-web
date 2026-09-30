@@ -328,6 +328,7 @@ export const zhCNLocale: LocalePlugin = {
     "chat.extensionPending": "待回答",
     "chat.extensionCollapse": "收起",
     "chat.extensionExpand": "展开",
+    "chat.extensionDetails": "查看详情",
     "chat.cancel": "取消",
     "chat.confirm": "确认",
     "chat.submit": "提交",

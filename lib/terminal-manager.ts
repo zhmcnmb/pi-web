@@ -189,9 +189,10 @@ export function killTerminal(id: string, force = false): boolean {
   if (record.cleanupTimer) clearTimeout(record.cleanupTimer);
   registry().delete(id);
   if (!record.exited) {
-    record.pty.kill(force ? "SIGKILL" : undefined);
-    // A shell may trap SIGHUP; explicit close and lease expiry must still finish.
-    if (!force) {
+    // ConPTY kill() terminates the process tree and does not accept Unix signals.
+    record.pty.kill(force && process.platform !== "win32" ? "SIGKILL" : undefined);
+    // A Unix shell may trap SIGHUP; explicit close and lease expiry must still finish.
+    if (!force && process.platform !== "win32") {
       record.cleanupTimer = setTimeout(() => {
         if (!record.exited) record.pty.kill("SIGKILL");
       }, 2000);

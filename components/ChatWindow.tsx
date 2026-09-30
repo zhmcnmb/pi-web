@@ -1499,6 +1499,9 @@ function ExtensionDialog({
   const [now, setNow] = useState(() => Date.now());
   const focusFirstOption = useCallback((element: HTMLDivElement | null) => element?.focus(), []);
   const summary = getExtensionDialogSummary(request);
+  const titleBreak = request.method === "select" ? request.title.indexOf("\n\n") : -1;
+  const titleText = titleBreak < 0 ? request.title : request.title.slice(0, titleBreak);
+  const titleDetails = titleBreak < 0 ? null : request.title.slice(titleBreak + 2);
   const remainingSeconds = request.expiresAt === undefined
     ? null
     : Math.max(0, Math.ceil((request.expiresAt - now) / 1000));
@@ -1600,9 +1603,14 @@ function ExtensionDialog({
       >
         <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 14px", borderBottom: "1px solid var(--border)", maxHeight: "50%", overflowY: "auto" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Pi's TUI shows the title verbatim, newlines included; select/input have no
-                separate message field, so extensions put multi-line text here. */}
-            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 650, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{request.title}</div>
+            {/* Select dialogs may include long previews after a blank line in the title. */}
+            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 650, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{titleText}</div>
+            {titleDetails && (
+              <details>
+                <summary style={{ marginTop: 6, color: "var(--accent)", cursor: "pointer", fontSize: 12 }}>{t("chat.extensionDetails")}</summary>
+                <div style={{ marginTop: 8, color: "var(--text)", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{titleDetails}</div>
+              </details>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 3, color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
               <span>{t("chat.extensionRequest")}</span>
               {countdown}

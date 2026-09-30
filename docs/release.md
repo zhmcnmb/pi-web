@@ -175,3 +175,12 @@ Expected:
 - npm exact version resolves.
 - `main` is aligned with `origin/main`.
 - `HEAD` points at the release commit and `v<version>` tag.
+
+## Local Service Replacement (2026-09-29)
+
+This is a local override, not an npm or GitHub release:
+
+- In RPC mode, `@juicesharp/rpiv-ask-user-question` folds option previews into the `select` title. A long preview can occupy the space above the options. Pi Web now leaves the first paragraph visible and puts subsequent title paragraphs in a closed, expandable details section (`components/ChatWindow.tsx`). The desktop and mobile extension-dialog E2E test covers this behavior.
+- Build a local replacement from a source snapshot **outside this repository**, passing that directory to `next build --webpack`. The root `tsconfig.json` includes `**/*.ts`/`**/*.tsx`: copying the source into `outputs/` and building from the repo root made type checking scan two copies, causing duplicate globals and misleading SDK export errors. A production build also writes to `.next`; do not run it in the dev checkout. Keep or inspect any pre-existing `.next` content before cleaning up a failed build.
+- Pack the isolated build and install the tarball globally when the terminal `pi-web` command must use the replacement. Check that the tarball includes `.next/BUILD_ID` and `bin/pi-web.js`, then check `pi-web --help` and the installed build before considering it deployed. A source-only dev server on another port does not update the global command.
+- Installing a replacement is **not** permission to start the service or open a browser. Leave port 30141 stopped unless the operator explicitly asks to start it; they will run `pi-web` themselves. A process started through the agent's tool shell may receive `Ctrl+C` when that shell ends, so a transient HTTP 200 is not proof of a persistent service. Use `pi-web --no-open` only when startup was explicitly requested without browser opening.
