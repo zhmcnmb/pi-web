@@ -853,6 +853,9 @@ function entryToUiMessage(
       if (typeof legacyContent === "string") {
         message = { ...message, content: [{ type: "text", text: legacyContent }] } as AgentMessage;
       }
+      if (message.role === "assistant") {
+        message = { ...message, completedAt: parseEntryTimestamp(entry.timestamp) };
+      }
       if (!options.deferThinking || message.role !== "assistant") return message;
       const content = message.content;
       return {

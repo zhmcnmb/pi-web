@@ -1,3 +1,4 @@
+import { createBuiltinToolExtensions } from "./builtin-tool-extensions";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import {
   createAgentSessionFromServices,
@@ -233,10 +234,13 @@ export function createSubagentController(
               }
             : {}),
           appendSystemPrompt,
-          // The exact prompt is sent through before_agent_start; see lib/exact-system-prompt.ts.
-          ...(promptPlan.exactSystemPrompt !== undefined
-            ? { extensionFactories: [createExactSystemPromptExtension(() => promptPlan.exactSystemPrompt)] }
-            : {}),
+          // Keep the SDK tool allow-list; loading an extension does not grant all its tools.
+          extensionFactories: [
+            ...(profile.loadExtensions ? createBuiltinToolExtensions() : []),
+            ...(promptPlan.exactSystemPrompt !== undefined
+              ? [createExactSystemPromptExtension(() => promptPlan.exactSystemPrompt)]
+              : []),
+          ],
         },
         ...((profile.loadExtensions || profile.loadSkills)
           ? { resourceLoaderReloadOptions: projectTrustReloadOptions(childCwd, agentDir) }

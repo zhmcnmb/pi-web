@@ -568,7 +568,9 @@ export function selectSubagentExtensionTools(
 ): string[] {
   const wanted = selectors.map((selector) => selector.slice(4).toLowerCase());
   return [...extensions].flatMap((extension) => {
-    const pathName = extension.path.replaceAll("\\", "/").split("/").at(-2) ?? extension.path;
+    const pathName = extension.path.startsWith("builtin:")
+      ? extension.path.slice("builtin:".length)
+      : extension.path.replaceAll("\\", "/").split("/").at(-2) ?? extension.path;
     const sourceName = (extension.sourceInfo?.source ?? "").replace(/^npm:/, "");
     const extensionNames = new Set([pathName.toLowerCase(), sourceName.toLowerCase()]);
     const selected = wanted.some((selector) => {

@@ -128,6 +128,28 @@ test("keeps streamed tool input out of collapsed markup while counting it", () =
   assert.equal(getTokenEstimateText(block), block.rawInput);
 });
 
+test("does not render a stack of empty reasoning panels during generation", () => {
+  const content = Array.from({ length: 9 }, () => ({ type: "thinking", thinking: "" }));
+  const message = { role: "assistant", provider: "GPT", model: "test-model", content };
+  assert.equal(renderMessage(message, { isStreaming: true }), "");
+  const html = renderMessage({ ...message, content: [
+    ...content,
+    { type: "toolCall", toolCallId: "todo-1", toolName: "todo", input: {} },
+  ] }, { isStreaming: true });
+  assert.match(html, />todo</);
+  assert.doesNotMatch(html, /aria-label="Thinking/);
+});
+
+test("tool durations exclude the model generation time", () => {
+  const startedAt = Date.parse("2026-09-30T03:44:36.870Z");
+  const completedAt = startedAt + 217_083;
+  const block = { type: "toolCall", toolCallId: "todo-1", toolName: "todo", input: {} };
+  const message = { role: "assistant", content: [block], timestamp: startedAt, completedAt };
+  const result = { role: "toolResult", toolCallId: "todo-1", content: [], timestamp: completedAt + 7 };
+  assert.doesNotMatch(renderMessage(message, { toolResults: new Map([["todo-1", result]]) }), /217s/);
+  assert.match(renderMessage(message, { toolResults: new Map([["todo-1", { ...result, timestamp: completedAt + 3_000 }]]) }), /3s/);
+});
+
 test("renders subagents as standard tool calls with only an extra session button", () => {
   const block = {
     type: "toolCall",

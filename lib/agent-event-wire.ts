@@ -1,5 +1,7 @@
 import type { JsonAgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
+export const AGENT_EVENT_HEARTBEAT_INTERVAL_MS = 30_000;
+
 export interface AgentEventLike {
   type: string;
   [key: string]: unknown;
@@ -94,6 +96,10 @@ export function toClientAgentEvent(
       type: "message_update",
       assistantMessageEvent: metadata ? { ...deltaEvent, ...metadata } : deltaEvent,
     } as ClientMessageUpdateEvent;
+  }
+
+  if (event.type === "message_end" && isObject(event.message) && event.message.role === "assistant") {
+    return { ...event, message: { ...event.message, completedAt: Date.now() } };
   }
 
   if (event.type === "tool_execution_update") {

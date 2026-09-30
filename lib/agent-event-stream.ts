@@ -1,4 +1,5 @@
 import {
+  AGENT_EVENT_HEARTBEAT_INTERVAL_MS,
   isEventIncludedInSnapshot,
   toClientAgentEvent,
   type AgentEventLike,
@@ -11,8 +12,6 @@ export interface AgentEventStreamSession {
   isAlive?(): boolean;
   onEvent(listener: (event: AgentEventLike) => void): () => void;
 }
-
-const HEARTBEAT_INTERVAL_MS = 30_000;
 
 /**
  * Registry of live SSE streams, closed from the SIGINT/SIGTERM hook in
@@ -174,7 +173,7 @@ export function createAgentEventStream(
       }
       req.signal.addEventListener("abort", abortHandler, { once: true });
 
-      heartbeat = setInterval(() => enqueueText(":\n\n"), HEARTBEAT_INTERVAL_MS);
+      heartbeat = setInterval(() => encode({ type: "heartbeat" }), AGENT_EVENT_HEARTBEAT_INTERVAL_MS);
 
       // Force the response headers through without claiming that the agent is
       // ready. The client waits for the later `connected` data event.

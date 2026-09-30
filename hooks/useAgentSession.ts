@@ -14,6 +14,7 @@ import type {
 } from "@/lib/types";
 import { isBlockingExtensionUiRequest } from "@/lib/browser-notifications";
 import { normalizeToolCalls } from "@/lib/normalize";
+import { hasDisplayableAssistantContent } from "@/lib/message-display";
 import { isPromptRejectedError, sendAgentCommand } from "@/lib/agent-client";
 import {
   deleteSessionViewSnapshot,
@@ -1363,7 +1364,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (msg?.role === "user") break;
           if (msg?.role === "assistant") {
             dispatch({ type: "snapshot", message: msg });
-            if (msg.content.length > 0) setAgentPhase(null);
+            if (hasDisplayableAssistantContent(msg)) setAgentPhase(null);
           } else if (msg) {
             setAgentPhase(null);
           }
@@ -1371,7 +1372,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const delta = event.assistantMessageEvent as ClientAssistantMessageEvent | undefined;
           if (delta) {
             dispatch({ type: "delta", event: delta });
-            if (delta.type !== "toolcall_start" && delta.type !== "toolcall_delta") {
+            if (delta.type === "toolcall_end"
+              || ("delta" in delta && delta.type !== "toolcall_delta" && delta.delta.trim() !== "")
+              || ("content" in delta && delta.content.trim() !== "")) {
               setAgentPhase(null);
             }
           }

@@ -1,3 +1,4 @@
+import { createBuiltinToolExtensions } from "./builtin-tool-extensions";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, Theme } from "@earendil-works/pi-coding-agent";
 import { KeybindingsManager as TuiKeybindingsManager, TUI_KEYBINDINGS } from "@earendil-works/pi-tui";
@@ -2041,12 +2042,16 @@ export async function startRpcSession(
                 }
               : {}),
             appendSystemPrompt: subagentResources.appendSystemPrompt,
-            ...(usesExactSystemPrompt ? { extensionFactories: [exactSystemPromptExtension] } : {}),
+            extensionFactories: [
+              ...(subagentResources.loadExtensions ? createBuiltinToolExtensions() : []),
+              ...(usesExactSystemPrompt ? [exactSystemPromptExtension] : []),
+            ],
           }
         : chatOnly
           ? { ...CHAT_ONLY_RESOURCE_LOADER_OPTIONS, extensionFactories: [exactSystemPromptExtension] }
         : {
             extensionFactories: [
+              ...createBuiltinToolExtensions(),
               createProjectCommandBashExtension({
                 cwd: sessionCwd,
                 settings: settingsManager,

@@ -77,6 +77,8 @@ export interface AssistantMessage {
   stopReason?: string;
   errorMessage?: string;
   timestamp?: number;
+  /** UI-only completion time; SDK timestamp marks the generation request start. */
+  completedAt?: number;
   usage?: AgentUsage;
 }
 

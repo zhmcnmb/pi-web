@@ -1,6 +1,6 @@
 # Pi SDK 0.99.1 兼容性核查
 
-核查日期：2026-09-30。前半记录升级前的兼容性评估；用户随后授权实施，修复范围和验证结果见“修复与验证”节，后续授权的本机打包替换结果见“本机打包与替换”节。服务启动仍不在本次范围。
+核查日期：2026-09-30。最新状态：SDK 0.99.1、官方工具接入和实时显示修复已完成，本机全局安装已替换，服务首页 BUILD_ID 与新包一致。前半记录升级前评估及第一轮替换；后续官方工具、显示修复与部署证据见末节。本次没有执行服务启动或重启。
 
 ## 结论
 
@@ -155,3 +155,29 @@ Sign in with ChatGPT requires a device ID (UUID) for this installation
 - 30141 无服务监听，没有启动服务、打开浏览器或发布 npm/GitHub Release。开发仓库的 `.next` 未被生产构建覆盖；仓库外源码副本、依赖链接与本轮旧安装备份已清理，新安装包保留在 `outputs/`。
 
 构建、安装与核验记录位于 `temp/pi-web-local-replace-0991-20260930/logs/`。后续提交推送按完整清单单独确认；浏览器、真实模型流和完整 OAuth 登录仍未验证。
+
+## 官方工具接入与实时显示修复
+
+后续授权参考 `agegr/pi-web` 上游并接入官方能力。参考提交为 `433d09ea2f2cc77b0ff356e8c57575cd4d30179e`；上游仍使用 SDK `0.87.1`，没有本次空思考与计时问题的现成修复，未合并上游或修改 remote。
+
+- 主会话、新建及恢复子代理的资源加载路径加入 SDK 官方 MCP、codemode 和 tool_search factories，以 `builtin` / `replaceable` 元数据保持 CLI 的资源禁用和第三方同名替换规则。codemode/tool_search 不强制激活，继续跟随有效 defaultTools 或 MCP exposure。Chat-only 不加载它们，子代理的 loadExtensions 开关与静态工具白名单仍然有效，未自动放宽动态 MCP 工具权限。
+- SSE 每 30 秒发送浏览器可见的 heartbeat，客户端不转发给业务层；已就绪连接连续 60 秒没有任何事件时，沿现有按需恢复路径重新连接。启动绝对期限、会话切换、停止和计时器清理均保留。
+- 实际会话记录中，一次 assistant 请求从 `03:44:36.870Z` 到落盘 `03:48:13.953Z` 共 217.083 秒，包含 9 个可见文本为空的 thinking 块；todo 结果在 `03:48:13.960Z` 到达，仅比 assistant 完成晚 7 毫秒。这说明该次截图主要是模型等待/生成与显示误导，不能仅凭截图断言 SSE 丢失。
+- 流式空 thinking 不再生成空白面板；已有可见思考、历史 deferred 预览和工具参数仍保留。等待状态以可见内容判断，不因空思考事件提前清空。
+- SDK assistant.timestamp 是请求开始时间，不能用作工具起始边界。历史读取从 entry.timestamp 派生 UI-only completedAt，SSE 在 assistant message_end 标记完成时间，不修改 SDK 消息或原始会话文件；工具耗时从完成边界计算，避免把模型生成时间算进 todo 等工具。
+
+验证：完整 1336 项中 1334 通过、2 项平台跳过、0 失败；类型检查、修改范围 ESLint、diff 检查和编码/行尾检查通过。新增真实 SDK 与本地 HTTP MCP 检查覆盖 inactive/修饰符、预设/reload、第三方替换、direct/codemode/deferred/hidden、真实 QuickJS 调用、tool_search 加载、嵌套权限拦截、项目信任、Chat-only 和静态白名单。Windows 测试临时目录经 realpathSync.native 展开，避免 ADMINI~1 短路径误认用户技能为项目资源。
+
+验证日志：`temp/pi-web-official-tools-20260930/logs/full-tests.log`。未发送真实模型请求、改动真实凭据、完成真实 OAuth 或验证用户浏览器。
+
+### 本轮本机替换
+
+用户随后明确要求直接替换，已更新本机全局安装；没有执行停服、启动、重启或打开浏览器，也没有保存旧安装备份。
+
+- 仓库外生产构建退出码 0，开发目录 `.next` 未被覆盖。新包为 `outputs/agegr-pi-web-0.9.3-pi-0.99.1-official-tools-20260930.tgz`，98,533,906 字节，包含 698 个文件；SHA-256 为 `a2c4d12946d45f05ab16c1d6ccbb626e29d9a65400b0f9dadab79a49bcb0c75e`。不包含 node_modules、临时目录或 JS sourcemap。
+- tarball 解包和安装目录的 698 个文件均与构建核验清单一致，允许 npm 对 bin/pi-web.js shebang 的 CRLF 规范化；BUILD_ID 均为 `aGGkGaq7JDDGOvhCjOpfp`。Pi Web 仍为 0.9.3，四个 Pi 包仍为 0.99.1。
+- 全局离线安装后，将 15 个直接运行依赖对齐到已测试版本，包括 React/React DOM 19.2.4 和 js-yaml 5.2.3；SDK ESM 入口及官方 factories 导出、pi-web --help 通过。原生 PTY 完成 shell 启动、输出与无信号关闭检查，shell 进程确认退出。
+- 隔离源副本改用已安装 SDK 的运行依赖，四项官方工具集成检查再次全部通过；测试所需 jiti 仅复用项目开发依赖，未安装到全局运行包。
+- 运行中的实例不会自动套用新代码。刚替换完时 30141 暂无监听；随后只读核对时服务已经监听，`/api/agent/running` 与首页均返回 200，首页包含新包 BUILD_ID `aGGkGaq7JDDGOvhCjOpfp`。本次未发出任何服务启动或重启命令；HTTP 核对不等于浏览器或真实模型验收。
+
+日志位于 `temp/pi-web-official-tools-20260930/logs/`，包含完整测试、生产构建、解包核验、安装结果与已安装 SDK 集成检查；临时源码、参考上游、依赖链接和一次性安装/测试入口已清理。第一轮旧 tarball 经原 SHA-1 核对后已删除，仅保留本轮新包，第一轮路径与 BUILD_ID 作为历史记录。源码提交状态以 Git 历史和远端为准，公开 npm/GitHub 发布不在范围。

@@ -18,15 +18,17 @@ export function isMessageGroupAnchor(message: { role?: AgentMessage["role"]; cus
     ));
 }
 
-export function isEmptyThinkingBlock(block: AssistantContentBlock, options: DisplayOptions = {}): block is ThinkingContent {
-  return block.type === "thinking" && !block.deferred && !options.isStreaming && block.thinking.trim() === "";
+export function isEmptyThinkingBlock(block: AssistantContentBlock): block is ThinkingContent {
+  return block.type === "thinking" && !block.deferred && block.thinking.trim() === "";
 }
 
-export function getDisplayableAssistantBlocks(
-  message: AssistantMessage,
-  options: DisplayOptions = {},
-): AssistantContentBlock[] {
-  return (message.content ?? []).filter((block) => !isEmptyThinkingBlock(block, options));
+export function getDisplayableAssistantBlocks(message: AssistantMessage): AssistantContentBlock[] {
+  return (message.content ?? []).filter((block) => !isEmptyThinkingBlock(block));
+}
+
+export function hasDisplayableAssistantContent(message: AssistantMessage | null | undefined): boolean {
+  return Boolean(message && getDisplayableAssistantBlocks(message)
+    .some((block) => block.type !== "text" || block.text.trim() !== ""));
 }
 
 export function getAssistantErrorMessage(
@@ -55,9 +57,8 @@ function isFinalAnswerBlock(block: AssistantContentBlock): boolean {
 
 export function splitFinalAssistantBlocks(
   message: AssistantMessage,
-  options: DisplayOptions = {},
 ): { answerBlocks: AssistantContentBlock[]; processBlocks: AssistantContentBlock[] } {
-  const blocks = getDisplayableAssistantBlocks(message, options);
+  const blocks = getDisplayableAssistantBlocks(message);
   const lastProcessIndex = blocks.findLastIndex((block) => !isFinalAnswerBlock(block));
   if (lastProcessIndex === -1) {
     return { answerBlocks: blocks, processBlocks: [] };

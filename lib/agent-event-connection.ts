@@ -1,4 +1,4 @@
-import type { AgentEventLike } from "./agent-event-wire";
+import { AGENT_EVENT_HEARTBEAT_INTERVAL_MS, type AgentEventLike } from "./agent-event-wire";
 
 export interface AgentEventSourceLike {
   readonly readyState: number;
@@ -31,6 +31,7 @@ type Connection = {
   sessionId: string;
   source: AgentEventSourceLike;
   attempt: Attempt;
+  activityTimer?: ReturnType<typeof setTimeout>;
 };
 
 export interface AgentEventConnectionOptions {
@@ -155,13 +156,24 @@ export class AgentEventConnection {
         this.fail(connection, new AgentEventConnectionError("startup_error", message));
         return;
       }
-      this.options.onEvent(event);
+      this.resetActivityTimeout(connection);
+      if (event.type !== "heartbeat") this.options.onEvent(event);
     };
     source.onerror = () => {
       this.fail(connection, new AgentEventConnectionError("closed"));
     };
 
     return connection;
+  }
+
+  private resetActivityTimeout(connection: Connection): void {
+    if (!connection.attempt.ready) return;
+    if (connection.activityTimer !== undefined) clearTimeout(connection.activityTimer);
+    // A half-open transport can stay OPEN indefinitely without an error event.
+    connection.activityTimer = setTimeout(() => {
+      this.fail(connection, new AgentEventConnectionError("closed"));
+    }, AGENT_EVENT_HEARTBEAT_INTERVAL_MS * 2);
+    connection.activityTimer.unref?.();
   }
 
   private fail(connection: Connection, error: AgentEventConnectionError): void {
@@ -172,6 +184,7 @@ export class AgentEventConnection {
   }
 
   private discard(connection: Connection, error: AgentEventConnectionError): void {
+    if (connection.activityTimer !== undefined) clearTimeout(connection.activityTimer);
     connection.attempt.fail(error);
     connection.source.close();
     if (this.current === connection) this.current = null;
